@@ -4,6 +4,23 @@ package ratgo
 #cgo LDFLAGS: -lrocksdb -lrt
 #include <stdlib.h>
 #include "rocksdb/c.h"
+
+// This function exists only to clean up lack-of-const warnings when
+// leveldb_approximate_sizes is called from Go-lang.
+void levigo_leveldb_approximate_sizes(
+    leveldb_t* db,
+    int num_ranges,
+    char** range_start_key, const size_t* range_start_key_len,
+    char** range_limit_key, const size_t* range_limit_key_len,
+    uint64_t* sizes) {
+  leveldb_approximate_sizes(db,
+                            num_ranges,
+                            (const char* const*)range_start_key,
+                            range_start_key_len,
+                            (const char* const*)range_limit_key,
+                            range_limit_key_len,
+                            sizes);
+}
 */
 import "C"
 
@@ -166,4 +183,117 @@ func (db *DB) Delete(wo *WriteOptions, key []byte) error {
 		return DatabaseError(gs)
 	}
 	return nil
+}
+
+// Write atomically writes a WriteBatch to disk.
+func (db *DB) Write(wo *WriteOptions, w *WriteBatch) error {
+	var errStr *C.char
+	C.leveldb_write(db.RocksDb, wo.Opt, w.wbatch, &errStr)
+	if errStr != nil {
+		gs := C.GoString(errStr)
+		C.free(unsafe.Pointer(errStr))
+		return DatabaseError(gs)
+	}
+	return nil
+}
+
+// NewIterator returns an Iterator over the the database that uses the
+// ReadOptions given.
+//
+// Often, this is used for large, offline bulk reads while serving live
+// traffic. In that case, it may be wise to disable caching so that the data
+// processed by the returned Iterator does not displace the already cached
+// data. This can be done by calling SetFillCache(false) on the ReadOptions
+// before passing it here.
+//
+// Similiarly, ReadOptions.SetSnapshot is also useful.
+func (db *DB) NewIterator(ro *ReadOptions) *Iterator {
+	it := C.leveldb_create_iterator(db.RocksDb, ro.Opt)
+	return &Iterator{Iter: it}
+}
+
+// GetApproximateSizes returns the approximate number of bytes of file system
+// space used by one or more key ranges.
+//
+// The keys counted will begin at Range.Start and end on the key before
+// Range.Limit.
+func (db *DB) GetApproximateSizes(ranges []Range) []uint64 {
+	starts := make([]*C.char, len(ranges))
+	limits := make([]*C.char, len(ranges))
+	startLens := make([]C.size_t, len(ranges))
+	limitLens := make([]C.size_t, len(ranges))
+	for i, r := range ranges {
+		starts[i] = C.CString(string(r.Start))
+		startLens[i] = C.size_t(len(r.Start))
+		limits[i] = C.CString(string(r.Limit))
+		limitLens[i] = C.size_t(len(r.Limit))
+	}
+	sizes := make([]uint64, len(ranges))
+	numranges := C.int(len(ranges))
+	startsPtr := &starts[0]
+	limitsPtr := &limits[0]
+	startLensPtr := &startLens[0]
+	limitLensPtr := &limitLens[0]
+	sizesPtr := (*C.uint64_t)(&sizes[0])
+	C.levigo_leveldb_approximate_sizes(
+		db.RocksDb, numranges, startsPtr, startLensPtr,
+		limitsPtr, limitLensPtr, sizesPtr)
+	for i := range ranges {
+		C.free(unsafe.Pointer(starts[i]))
+		C.free(unsafe.Pointer(limits[i]))
+	}
+	return sizes
+}
+
+// PropertyValue returns the value of a database property.
+//
+// Examples of properties include "leveldb.stats", "leveldb.sstables",
+// and "leveldb.num-files-at-level0".
+func (db *DB) PropertyValue(propName string) string {
+	cname := C.CString(propName)
+	value := C.GoString(C.leveldb_property_value(db.RocksDb, cname))
+	C.free(unsafe.Pointer(cname))
+	return value
+}
+
+// NewSnapshot creates a new snapshot of the database.
+//
+// The snapshot, when used in a ReadOptions, provides a consistent view of
+// state of the database at the the snapshot was created.
+//
+// To prevent memory leaks and resource strain in the database, the snapshot
+// returned must be released with DB.ReleaseSnapshot method on the DB that
+// created it.
+//
+// See the LevelDB documentation for details.
+func (db *DB) NewSnapshot() *Snapshot {
+	return &Snapshot{C.leveldb_create_snapshot(db.RocksDb)}
+}
+
+// ReleaseSnapshot removes the snapshot from the database's list of snapshots,
+// and deallocates it.
+func (db *DB) ReleaseSnapshot(snap *Snapshot) {
+	C.leveldb_release_snapshot(db.RocksDb, snap.snap)
+}
+
+// CompactRange runs a manual compaction on the Range of keys given. This is
+// not likely to be needed for typical usage.
+func (db *DB) CompactRange(r Range) {
+	var start, limit *C.char
+	if len(r.Start) != 0 {
+		start = (*C.char)(unsafe.Pointer(&r.Start[0]))
+	}
+	if len(r.Limit) != 0 {
+		limit = (*C.char)(unsafe.Pointer(&r.Limit[0]))
+	}
+	C.leveldb_compact_range(
+		db.RocksDb, start, C.size_t(len(r.Start)), limit, C.size_t(len(r.Limit)))
+}
+
+// Close closes the database, rendering it unusable for I/O, by deallocating
+// the underlying handle.
+//
+// Any attempts to use the DB after Close is called will panic.
+func (db *DB) Close() {
+	C.leveldb_close(db.RocksDb)
 }
