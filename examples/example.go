@@ -31,7 +31,7 @@ func main() {
 	}
 	defer wo.Close()
 
-	//Read
+	// Read
 	ro := ratgo.NewReadOptions()
 	data, err := db.Get(ro, []byte("user"))
 	if err != nil {
@@ -40,6 +40,18 @@ func main() {
 		fmt.Println("result is ", data)
 	}
 	ro.Close()
+
+	// snapshot
+	files, manifestFileSize, err := db.GetLiveFiles(false)
+	if err != nil {
+		fmt.Println("get live files encounter an error:", err.Error())
+	} else {
+		for _, file := range files {
+			fmt.Printf("%v ", file)
+		}
+		fmt.Println()
+		fmt.Println("manifestfile size is :", manifestFileSize)
+	}
 
 	//Close
 	db.Close()

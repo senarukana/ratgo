@@ -43,6 +43,14 @@ type WriteOptions struct {
 	Opt *C.leveldb_writeoptions_t
 }
 
+// Options that control the flush operations
+//
+// If true, the flush will wait until the flush is done.
+// Default true
+type FlushOptions struct {
+	Opt *C.leveldb_flushoptions_t
+}
+
 // NewOptions allocates a new Options object.
 func NewOptions() *Options {
 	opt := C.leveldb_options_create()

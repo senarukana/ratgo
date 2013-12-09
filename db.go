@@ -21,6 +21,14 @@ void levigo_leveldb_approximate_sizes(
                             range_limit_key_len,
                             sizes);
 }
+
+// According to the answer of :https://groups.google.com/forum/#!msg/golang-nuts/6toTzvJbyIs/sLQF6NLn-wIJ
+// There is no pointer arithmetic in Go.
+// this function gives an index and return the char* from char**
+char* get_list_at(char **list, int idx)
+{
+	return list[idx];
+}
 */
 import "C"
 
@@ -148,6 +156,35 @@ func (db *DB) Get(ro *ReadOptions, key []byte) ([]byte, error) {
 	}
 
 	value := C.leveldb_get(
+		db.RocksDb, ro.Opt, k, C.size_t(len(key)), &vallen, &errStr)
+
+	if errStr != nil {
+		gs := C.GoString(errStr)
+		C.free(unsafe.Pointer(errStr))
+		return nil, DatabaseError(gs)
+	}
+
+	if value == nil {
+		return nil, nil
+	}
+
+	return C.GoBytes(unsafe.Pointer(value), C.int(vallen)), nil
+}
+
+// MultiGet returns the data associated with multiple keys from the database.
+
+//
+// The key byte slice may be reused safely. Get takes a copy of
+// them before returning.
+
+func (db *DB) MultiGet(ro *ReadOptions, keys [][]byte) ([][]byte, []error) {
+	var errStr **C.char
+	var keySlices, valueSlices *C.leveldb_slice_t
+	for _, key := range keys {
+
+	}
+
+	value := C.leveldb_multi_get(
 		db.RocksDb, ro.Opt, k, C.size_t(len(key)), &vallen, &errStr)
 
 	if errStr != nil {
@@ -296,4 +333,38 @@ func (db *DB) CompactRange(r Range) {
 // Any attempts to use the DB after Close is called will panic.
 func (db *DB) Close() {
 	C.leveldb_close(db.RocksDb)
+}
+
+func (db *DB) DisableFileDeletions() {
+	C.leveldb_disable_file_deletions(db.RocksDb)
+}
+
+func (db *DB) EnableFileDeletions() {
+	C.leveldb_enable_file_deletions(db.RocksDb)
+}
+
+// Get live files return the current db data files (include manifest file) and manifestFileSize
+//
+// flushMemtable indicates whether or not flush the memtable to disk.
+func (db *DB) GetLiveFiles(flushMemtable bool) (files []string, manifestFileSize int, err error) {
+	var errStr *C.char
+	var retFiles **C.char
+	var retFileNum C.int
+	var retManifestSize C.uint64_t
+
+	C.leveldb_get_live_files(db.RocksDb, &retFiles, &retFileNum, &retManifestSize, boolToUchar(flushMemtable), &errStr)
+	if errStr != nil {
+		gs := C.GoString(errStr)
+		C.free(unsafe.Pointer(errStr))
+		err = DatabaseError(gs)
+		return
+	}
+
+	for i := 0; i < int(retFileNum); i++ {
+		file := C.get_list_at(retFiles, C.int(i))
+		files = append(files, C.GoString(file))
+		C.free(unsafe.Pointer(file))
+	}
+	manifestFileSize = int(retManifestSize)
+	return
 }
