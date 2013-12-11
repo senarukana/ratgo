@@ -334,6 +334,7 @@ void leveldb_get_live_files(
   }
 }
 
+
 void leveldb_flush(leveldb_t *db, leveldb_flushoptions_t* options, char** errptr) {
   Status s = db->rep->Flush(options->rep);
   if (!s.ok()) {

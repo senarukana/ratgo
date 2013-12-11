@@ -22,13 +22,37 @@ void levigo_leveldb_approximate_sizes(
                             sizes);
 }
 
+void ratgo_leveldb_multi_get(
+    leveldb_t* db,
+    leveldb_readoptions_t* options,
+    int key_num,
+    char** key_array,
+    size_t* key_array_length,
+    char*** value_array,
+    size_t** value_array_length,
+    char*** errsptr) {
+  leveldb_multi_get(db,
+  					options,
+  					key_num,
+  					(const char* const *)key_array,
+  					key_array_length,
+  					value_array,
+  					value_array_length,
+  					errsptr);
+}
+
+
 // According to the answer of :https://groups.google.com/forum/#!msg/golang-nuts/6toTzvJbyIs/sLQF6NLn-wIJ
 // There is no pointer arithmetic in Go.
 // this function gives an index and return the char* from char**
-char* get_list_at(char **list, int idx)
-{
-	return list[idx];
+char* get_list_at(char **list, int idx){
+        return list[idx];
 }
+
+int get_list_int_at(size_t *list, int idx){
+        return list[idx];
+}
+
 */
 import "C"
 
@@ -87,7 +111,7 @@ func Open(dbName string, o *Options) (*DB, error) {
 	rocksdb := C.leveldb_open(o.Opt, rocksDbName, &errStr)
 	if errStr != nil {
 		gs := C.GoString(errStr)
-		C.free(unsafe.Pointer(errStr))
+		C.leveldb_free(unsafe.Pointer(errStr))
 		return nil, DatabaseError(gs)
 	}
 	return &DB{rocksdb}, nil
@@ -103,7 +127,7 @@ func DestroyDatabase(dbname string, o *Options) error {
 	C.leveldb_destroy_db(o.Opt, ldbname, &errStr)
 	if errStr != nil {
 		gs := C.GoString(errStr)
-		C.free(unsafe.Pointer(errStr))
+		C.leveldb_free(unsafe.Pointer(errStr))
 		return DatabaseError(gs)
 	}
 	return nil
@@ -133,7 +157,7 @@ func (db *DB) Put(wo *WriteOptions, key, value []byte) error {
 
 	if errStr != nil {
 		gs := C.GoString(errStr)
-		C.free(unsafe.Pointer(errStr))
+		C.leveldb_free(unsafe.Pointer(errStr))
 		return DatabaseError(gs)
 	}
 	return nil
@@ -147,7 +171,7 @@ func (db *DB) Put(wo *WriteOptions, key, value []byte) error {
 //
 // The key byte slice may be reused safely. Get takes a copy of
 // them before returning.
-func (db *DB) Get(ro *ReadOptions, key []byte) ([]byte, error) {
+func (db *DB) Get(ro *ReadOptions, key []byte) (*Slice, error) {
 	var errStr *C.char
 	var vallen C.size_t
 	var k *C.char
@@ -160,44 +184,78 @@ func (db *DB) Get(ro *ReadOptions, key []byte) ([]byte, error) {
 
 	if errStr != nil {
 		gs := C.GoString(errStr)
-		C.free(unsafe.Pointer(errStr))
+		C.leveldb_free(unsafe.Pointer(errStr))
 		return nil, DatabaseError(gs)
 	}
 
 	if value == nil {
 		return nil, nil
 	}
-
-	return C.GoBytes(unsafe.Pointer(value), C.int(vallen)), nil
+	defer C.leveldb_free(unsafe.Pointer(value))
+	// not copy the data
+	slice := newSlice(unsafe.Pointer(value), int(vallen), true)
+	return slice, nil
 }
 
 // MultiGet returns the data associated with multiple keys from the database.
-
+//
+// If the key does not exist in the database, a nil []byte is returned. If the
+// key does exist, but the data is zero-length in the database, a zero-length
+// []byte will be returned.
 //
 // The key byte slice may be reused safely. Get takes a copy of
 // them before returning.
+func (db *DB) MultiGet(ro *ReadOptions, keys [][]byte) (returnValues []*Slice, returnErrors []error) {
+	var errsStr **C.char
+	var valueArray **C.char
+	var valueLengthArray *C.size_t
+	num := len(keys)
+	keyArray := make([]*C.char, num)
+	keyLengthArray := make([]C.size_t, num)
 
-func (db *DB) MultiGet(ro *ReadOptions, keys [][]byte) ([][]byte, []error) {
-	var errStr **C.char
-	var keySlices, valueSlices *C.leveldb_slice_t
-	for _, key := range keys {
+	returnValues = make([]*Slice, len(keys))
+	returnErrors = make([]error, len(keys))
 
+	for i, key := range keys {
+		// keyArray[i] = (*C.char)(unsafe.Pointer(&key[0]))
+		keyArray[i] = C.CString(string(key))
+		keyLengthArray[i] = C.size_t(len(key))
 	}
 
-	value := C.leveldb_multi_get(
-		db.RocksDb, ro.Opt, k, C.size_t(len(key)), &vallen, &errStr)
+	keyArrayPtr := &keyArray[0]
+	keyLengthArrayPtr := &keyLengthArray[0]
+	/*	valueArrayPtr := &valueArray[0]
+		valueLengthArrayPtr := &valueLengthArray[0]
+		errsStrPtr := &errsStr[0]*/
 
+	C.leveldb_multi_get(
+		db.RocksDb, ro.Opt, C.int(len(keys)),
+		keyArrayPtr, keyLengthArrayPtr,
+		&valueArray, &valueLengthArray, &errsStr)
+	for i := 0; i < num; i++ {
+		errStr := C.get_list_at(errsStr, C.int(i))
+		if errStr != nil {
+			returnErrors[i] = DatabaseError(C.GoString(errStr))
+			C.leveldb_free(unsafe.Pointer(errStr))
+		} else {
+			value := C.get_list_at(valueArray, C.int(i))
+			valueLength := C.get_list_int_at(valueLengthArray, C.int(i))
+			returnValues[i] = newSlice(unsafe.Pointer(value), int(valueLength), true)
+		}
+	}
+	C.leveldb_free(unsafe.Pointer(valueLengthArray))
+	return
+}
+
+func (db *DB) Flush(fo *FlushOptions) error {
+	var errStr *C.char
+	C.leveldb_flush(db.RocksDb, fo.Opt, &errStr)
 	if errStr != nil {
 		gs := C.GoString(errStr)
-		C.free(unsafe.Pointer(errStr))
-		return nil, DatabaseError(gs)
+		C.leveldb_free(unsafe.Pointer(errStr))
+		return DatabaseError(gs)
 	}
-
-	if value == nil {
-		return nil, nil
-	}
-
-	return C.GoBytes(unsafe.Pointer(value), C.int(vallen)), nil
+	return nil
 }
 
 // Delete removes the data associated with the key from the database.
@@ -216,7 +274,7 @@ func (db *DB) Delete(wo *WriteOptions, key []byte) error {
 
 	if errStr != nil {
 		gs := C.GoString(errStr)
-		C.free(unsafe.Pointer(errStr))
+		C.leveldb_free(unsafe.Pointer(errStr))
 		return DatabaseError(gs)
 	}
 	return nil
@@ -228,7 +286,7 @@ func (db *DB) Write(wo *WriteOptions, w *WriteBatch) error {
 	C.leveldb_write(db.RocksDb, wo.Opt, w.wbatch, &errStr)
 	if errStr != nil {
 		gs := C.GoString(errStr)
-		C.free(unsafe.Pointer(errStr))
+		C.leveldb_free(unsafe.Pointer(errStr))
 		return DatabaseError(gs)
 	}
 	return nil
@@ -346,24 +404,26 @@ func (db *DB) EnableFileDeletions() {
 // Get live files return the current db data files (include manifest file) and manifestFileSize
 //
 // flushMemtable indicates whether or not flush the memtable to disk.
+// It is supposed that this operation will not used often, so it will copy the data from c
 func (db *DB) GetLiveFiles(flushMemtable bool) (files []string, manifestFileSize int, err error) {
 	var errStr *C.char
-	var retFiles **C.char
-	var retFileNum C.int
+	var fileArray **C.char
+	var fileLengthArray *C.size_t
+	var fileNum C.int
 	var retManifestSize C.uint64_t
 
-	C.leveldb_get_live_files(db.RocksDb, &retFiles, &retFileNum, &retManifestSize, boolToUchar(flushMemtable), &errStr)
+	C.leveldb_get_live_files(db.RocksDb, &fileArray, &fileLengthArray, &fileNum, &retManifestSize, boolToUchar(flushMemtable), &errStr)
 	if errStr != nil {
 		gs := C.GoString(errStr)
-		C.free(unsafe.Pointer(errStr))
+		C.leveldb_free(unsafe.Pointer(errStr))
 		err = DatabaseError(gs)
 		return
 	}
-
-	for i := 0; i < int(retFileNum); i++ {
-		file := C.get_list_at(retFiles, C.int(i))
-		files = append(files, C.GoString(file))
-		C.free(unsafe.Pointer(file))
+	for i := 0; i < int(fileNum); i++ {
+		fileLength := C.get_list_int_at(fileLengthArray, C.int(i))
+		file := C.get_list_at(fileArray, C.int(i))
+		files = append(files, C.GoStringN(file, fileLength))
+		C.leveldb_free(unsafe.Pointer(file))
 	}
 	manifestFileSize = int(retManifestSize)
 	return
