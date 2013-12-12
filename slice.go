@@ -1,7 +1,7 @@
 package ratgo
 
 // slice hold the data from rocksdb, and finnalize it in the gc.
-// it can help us to escape from data copy.
+// it can help us to avoid data copy.
 
 /*
 #cgo LDFLAGS: -lrocksdb

@@ -247,6 +247,10 @@ func (db *DB) MultiGet(ro *ReadOptions, keys [][]byte) (returnValues []*Slice, r
 	return
 }
 
+// Flush flush all the data in memtable to disk
+//
+// If FlushOptions wait is true, the flush will wait until the flush is done.
+// Default: true
 func (db *DB) Flush(fo *FlushOptions) error {
 	var errStr *C.char
 	C.leveldb_flush(db.RocksDb, fo.Opt, &errStr)
@@ -271,6 +275,29 @@ func (db *DB) Delete(wo *WriteOptions, key []byte) error {
 
 	C.leveldb_delete(
 		db.RocksDb, wo.Opt, k, C.size_t(len(key)), &errStr)
+
+	if errStr != nil {
+		gs := C.GoString(errStr)
+		C.leveldb_free(unsafe.Pointer(errStr))
+		return DatabaseError(gs)
+	}
+	return nil
+}
+
+func (db *DB) Merge(wo *WriteOptions, key []byte, value []byte) error {
+	var errStr *C.char
+	var k, v *C.char
+	if len(key) != 0 {
+		k = (*C.char)(unsafe.Pointer(&key[0]))
+	}
+	if len(value) != 0 {
+		v = (*C.char)(unsafe.Pointer(&value[0]))
+	}
+
+	lenk := len(key)
+	lenv := len(value)
+	C.leveldb_merge(
+		db.RocksDb, wo.Opt, k, C.size_t(lenk), v, C.size_t(lenv), &errStr)
 
 	if errStr != nil {
 		gs := C.GoString(errStr)
@@ -393,10 +420,13 @@ func (db *DB) Close() {
 	C.leveldb_close(db.RocksDb)
 }
 
+// DisableFiledeleteltions instructs RocksDB to not delete data files.
+// Compactions will continue to occur, but files that are not needed by the database will not be deleted.
 func (db *DB) DisableFileDeletions() {
 	C.leveldb_disable_file_deletions(db.RocksDb)
 }
 
+// EnableFileDeletions instructs RocksDB to the delete data again.
 func (db *DB) EnableFileDeletions() {
 	C.leveldb_enable_file_deletions(db.RocksDb)
 }
@@ -404,7 +434,7 @@ func (db *DB) EnableFileDeletions() {
 // Get live files return the current db data files (include manifest file) and manifestFileSize
 //
 // flushMemtable indicates whether or not flush the memtable to disk.
-// It is supposed that this operation will not used often, so it will copy the data from c
+// When use this operation, you'd better first issue DisableFileDeletions.
 func (db *DB) GetLiveFiles(flushMemtable bool) (files []string, manifestFileSize int, err error) {
 	var errStr *C.char
 	var fileArray **C.char

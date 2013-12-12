@@ -235,3 +235,9 @@ func (wo *WriteOptions) Close() {
 func (wo *WriteOptions) SetSync(b bool) {
 	C.leveldb_writeoptions_set_sync(wo.Opt, boolToUchar(b))
 }
+
+// If true, writes will not first go to the write ahead log,
+// and the write may got lost after a crash.
+func (wo *WriteOptions) SetDisableWAL(b bool) {
+	C.leveldb_writeoptions_set_disable_wal(wo.Opt, boolToUchar(b))
+}

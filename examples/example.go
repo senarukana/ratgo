@@ -89,8 +89,8 @@ func main() {
 		fmt.Println("snapshot ok")
 	}
 
-	// Backup
-	// db.DisableFileDeletions()
+	// Backup operation
+	db.DisableFileDeletions()
 	files, manifestFileSize, err := db.GetLiveFiles(false)
 	if err != nil {
 		fmt.Println("get live files encounter an error:", err.Error())
@@ -102,6 +102,12 @@ func main() {
 		fmt.Println("manifestfile size is :", manifestFileSize)
 	}
 	db.EnableFileDeletions()
+
+	// Merge
+	err = db.Merge(wo, []byte("test"), []byte("ok"))
+	if err != nil {
+		fmt.Println("merge error:", err.Error())
+	}
 
 	// property
 	levelstats := db.PropertyValue("rocksdb.levelstatus")

@@ -157,6 +157,7 @@ static char* CopyString(const std::string& str) {
   return result;
 }
 
+
 //
 // leveldb operations
 //
@@ -225,6 +226,42 @@ char* leveldb_get(
     }
   }
   return result;
+}
+
+void leveldb_multi_get(
+    leveldb_t* db,
+    const leveldb_readoptions_t* options,
+    int key_num,
+    const char* const* key_array,
+    const size_t* key_array_length,
+    char*** value_array,
+    size_t** value_array_length,
+    char*** errsptr) {
+  int i;
+  std::vector<Slice> key_vector;
+  std::vector<std::string> value_vector;
+  for (i = 0; i < key_num; i++) {
+    key_vector.push_back(Slice(key_array[i], key_array_length[i]));
+  }
+  std::vector<Status> status_vector = db->rep->MultiGet(options->rep, key_vector, &value_vector);
+  *value_array = new char*[key_num];
+  *value_array_length = new size_t[key_num];
+  *errsptr = new char*[key_num];
+  for (i = 0; i < key_num; i++) {
+    if (status_vector[i].ok()) {
+      (*value_array_length)[i] = value_vector[i].size();
+      (*value_array)[i] = CopyString(value_vector[i]);
+      (*errsptr)[i] = NULL;
+    } else {
+      if (status_vector[i].IsNotFound()) {
+        (*value_array_length)[i] = 0;
+        (*value_array)[i] = NULL;
+        (*errsptr)[i] = NULL;
+      } else {
+        SaveError(&((*errsptr)[i]), status_vector[i]);
+      }
+    }
+  }
 }
 
 leveldb_iterator_t* leveldb_create_iterator(
@@ -312,28 +349,27 @@ void leveldb_enable_file_deletions(leveldb_t *db) {
 
 void leveldb_get_live_files(
   leveldb_t* db, 
-  char ***returnFiles,
-  int *fileNum,
-  uint64_t* manifestSize,
-  unsigned char flushmemtable,
+  char*** file_array,
+  size_t** file_array_length,
+  int* file_num,
+  uint64_t* manifest_size,
+  unsigned char flush_memtable,
   char** errptr) {
-  std::vector<std::string> retFiles;
-  Status s = db->rep->GetLiveFiles(retFiles, manifestSize, flushmemtable);
+  std::vector<std::string> file_vector;
+  Status s = db->rep->GetLiveFiles(file_vector, manifest_size, flush_memtable);
   if (s.ok()) {
-    std::cout<< retFiles.size()<<manifestSize<<std::endl;
-    *fileNum = static_cast<int>(retFiles.size());
-    *returnFiles = new char*[retFiles.size()];
-    for (int i = 0; i < *fileNum; i ++) {
-      *returnFiles[i] = CopyString(retFiles[i]);
-      std::cout<<*returnFiles[i]<<std::endl;
+    *file_num = static_cast<int>(file_vector.size());
+    *file_array = new char*[*file_num];
+    *file_array_length = new size_t[*file_num];
+    for (int i = 0; i < *file_num; i++) {
+      (*file_array_length)[i] = file_vector[i].size();
+      (*file_array)[i] = CopyString(file_vector[i]);
     }
   } else {
-    *manifestSize = 0;
+    *manifest_size = 0;
     SaveError(errptr, s);
-     std::cout<<"error happended"<<*errptr<<std::endl;
   }
 }
-
 
 void leveldb_flush(leveldb_t *db, leveldb_flushoptions_t* options, char** errptr) {
   Status s = db->rep->Flush(options->rep);
@@ -391,6 +427,10 @@ void leveldb_iter_get_error(const leveldb_iterator_t* iter, char** errptr) {
   SaveError(errptr, iter->rep->status());
 }
 
+//
+// Write Batch
+//
+
 leveldb_writebatch_t* leveldb_writebatch_create() {
   return new leveldb_writebatch_t;
 }
@@ -440,6 +480,10 @@ void leveldb_writebatch_iterate(
   b->rep.Iterate(&handler);
 }
 
+// 
+// Options
+//
+
 leveldb_options_t* leveldb_options_create() {
   return new leveldb_options_t;
 }
@@ -485,19 +529,44 @@ void leveldb_options_set_info_log(leveldb_options_t* opt, leveldb_logger_t* l) {
   }
 }
 
+// write buffer
+
 void leveldb_options_set_write_buffer_size(leveldb_options_t* opt, size_t s) {
   opt->rep.write_buffer_size = s;
 }
 
+void leveldb_options_set_max_write_buffer_number(leveldb_options_t* opt, size_t s) {
+  opt->rep.max_write_buffer_number = s;
+}
+
+void leveldb_options_set_min_write_buffer_number_to_merge(leveldb_options_t* opt, size_t s) {
+  opt->rep.min_write_buffer_number_to_merge = s;
+}
+
+
 void leveldb_options_set_max_open_files(leveldb_options_t* opt, int n) {
   opt->rep.max_open_files = n;
 }
+
+//
+// Cache Options
+//
 
 void leveldb_options_set_cache(leveldb_options_t* opt, leveldb_cache_t* c) {
   if (c) {
     opt->rep.block_cache = c->rep;
   }
 }
+
+void leveldb_options_set_compressed_cache(leveldb_options_t* opt, leveldb_cache_t* c) {
+  if (c) {
+    opt->rep.block_cache_compressed = c->rep;
+  }
+}
+
+//
+// Block Options
+//
 
 void leveldb_options_set_block_size(leveldb_options_t* opt, size_t s) {
   opt->rep.block_size = s;
@@ -718,6 +787,11 @@ void leveldb_writeoptions_set_sync(
   opt->rep.sync = v;
 }
 
+void leveldb_writeoptions_set_disable_wal(
+    leveldb_writeoptions_t* opt, unsigned char v) {
+  opt->rep.disableWAL = v;
+}
+
 leveldb_cache_t* leveldb_cache_create_lru(size_t capacity) {
   leveldb_cache_t* c = new leveldb_cache_t;
   c->rep = NewLRUCache(capacity);
@@ -751,6 +825,10 @@ void leveldb_flushoptions_destroy(leveldb_flushoptions_t* opt) {
 void leveldb_flushoptions_set_wait(
   leveldb_flushoptions_t* opt, unsigned char v) {
   opt->rep.wait = v;
+}
+
+void leveldb_free(void* ptr) {
+  free(ptr);
 }
 
 }  // end extern "C"

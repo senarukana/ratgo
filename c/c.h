@@ -69,6 +69,8 @@ typedef struct leveldb_snapshot_t      leveldb_snapshot_t;
 typedef struct leveldb_writablefile_t  leveldb_writablefile_t;
 typedef struct leveldb_writebatch_t    leveldb_writebatch_t;
 typedef struct leveldb_writeoptions_t  leveldb_writeoptions_t;
+typedef struct leveldb_flushoptions_t  leveldb_flushoptions_t;
+
 
 /* DB operations */
 
@@ -107,6 +109,16 @@ extern char* leveldb_get(
     size_t* vallen,
     char** errptr);
 
+extern void leveldb_multi_get(
+    leveldb_t* db,
+    const leveldb_readoptions_t* options,
+    int key_num,
+    const char* const* key_array,
+    const size_t* key_array_length,
+    char*** value_array,
+    size_t** value_array_length,
+    char*** errptr);
+
 extern leveldb_iterator_t* leveldb_create_iterator(
     leveldb_t* db,
     const leveldb_readoptions_t* options);
@@ -117,6 +129,9 @@ extern const leveldb_snapshot_t* leveldb_create_snapshot(
 extern void leveldb_release_snapshot(
     leveldb_t* db,
     const leveldb_snapshot_t* snapshot);
+
+extern void leveldb_flush(leveldb_t *db, 
+  leveldb_flushoptions_t* options, char** errptr);
 
 /* Returns NULL if property name is unknown.
    Else returns a pointer to a malloc()-ed null-terminated value. */
@@ -148,7 +163,7 @@ extern void leveldb_repair_db(
     const char* name,
     char** errptr);
 
-/* File Snapshots */
+/* Backup */
 extern void leveldb_disable_file_deletions(
   leveldb_t *db);
 
@@ -156,11 +171,12 @@ extern void leveldb_enable_file_deletions(
   leveldb_t *db);
 
 extern void leveldb_get_live_files(
-  leveldb_t *db, 
-  char ***returnFiles,
-  int *fileNum,
-  uint64_t* manifestSize,
-  unsigned char flushmemtable,
+  leveldb_t* db, 
+  char*** file_array,
+  size_t** file_array_length,
+  int *file_num,
+  uint64_t* manifest_size,
+  unsigned char flush_memtable,
   char** errptr);
 
 
@@ -220,10 +236,13 @@ extern void leveldb_options_set_info_log(leveldb_options_t*, leveldb_logger_t*);
 extern void leveldb_options_set_write_buffer_size(leveldb_options_t*, size_t);
 extern void leveldb_options_set_max_open_files(leveldb_options_t*, int);
 extern void leveldb_options_set_cache(leveldb_options_t*, leveldb_cache_t*);
+extern void leveldb_options_set_compressed_cache(leveldb_options_t* opt, leveldb_cache_t* c);
 extern void leveldb_options_set_block_size(leveldb_options_t*, size_t);
 extern void leveldb_options_set_block_restart_interval(leveldb_options_t*, int);
 extern void leveldb_options_set_compression_options(
     leveldb_options_t* opt, int w_bits, int level, int strategy);
+extern void leveldb_options_set_max_write_buffer_number(leveldb_options_t* opt, size_t s);
+extern void leveldb_options_set_min_write_buffer_number_to_merge(leveldb_options_t* opt, size_t s);
 
 enum {
   leveldb_no_compression = 0,
@@ -282,6 +301,8 @@ extern leveldb_writeoptions_t* leveldb_writeoptions_create();
 extern void leveldb_writeoptions_destroy(leveldb_writeoptions_t*);
 extern void leveldb_writeoptions_set_sync(
     leveldb_writeoptions_t*, unsigned char);
+extern void leveldb_writeoptions_set_disable_wal(
+    leveldb_writeoptions_t*, unsigned char);
 
 /* Cache */
 
@@ -292,6 +313,15 @@ extern void leveldb_cache_destroy(leveldb_cache_t* cache);
 
 extern leveldb_env_t* leveldb_create_default_env();
 extern void leveldb_env_destroy(leveldb_env_t*);
+
+/* Utility */
+/* Calls free(ptr).
+   REQUIRES: ptr was malloc()-ed and returned by one of the routines
+   in this file.  Note that in certain cases (typically on Windows), you
+   may need to call this routine instead of free(ptr) to dispose of
+   malloc()-ed memory returned by this library. */
+
+extern void leveldb_free(void* ptr);
 
 #ifdef __cplusplus
 }  /* end extern "C" */
