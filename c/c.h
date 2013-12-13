@@ -94,6 +94,13 @@ extern void leveldb_delete(
     const char* key, size_t keylen,
     char** errptr);
 
+extern void leveldb_merge(
+    leveldb_t* db,
+    const leveldb_writeoptions_t* options,
+    const char* key, size_t keylen,
+    const char* val, size_t vallen,
+    char** errptr);
+
 extern void leveldb_write(
     leveldb_t* db,
     const leveldb_writeoptions_t* options,
@@ -232,17 +239,52 @@ extern void leveldb_options_set_error_if_exists(
 extern void leveldb_options_set_paranoid_checks(
     leveldb_options_t*, unsigned char);
 extern void leveldb_options_set_env(leveldb_options_t*, leveldb_env_t*);
-extern void leveldb_options_set_info_log(leveldb_options_t*, leveldb_logger_t*);
+// buffer & cache
 extern void leveldb_options_set_write_buffer_size(leveldb_options_t*, size_t);
 extern void leveldb_options_set_max_open_files(leveldb_options_t*, int);
 extern void leveldb_options_set_cache(leveldb_options_t*, leveldb_cache_t*);
 extern void leveldb_options_set_compressed_cache(leveldb_options_t* opt, leveldb_cache_t* c);
+extern void leveldb_options_set_max_write_buffer_number(leveldb_options_t*, size_t);
+extern void leveldb_options_set_min_write_buffer_number_to_merge(leveldb_options_t* opt, size_t);
+// block
 extern void leveldb_options_set_block_size(leveldb_options_t*, size_t);
 extern void leveldb_options_set_block_restart_interval(leveldb_options_t*, int);
+// sync
+extern void leveldb_options_set_use_fsync(
+    leveldb_options_t*, unsigned char);
+extern void leveldb_options_set_disable_data_sync(
+    leveldb_options_t*, unsigned char);
+// log
+extern void leveldb_options_set_info_log(leveldb_options_t*, leveldb_logger_t*);
+extern void leveldb_options_set_db_log_dir(leveldb_options_t*, const char*);
+extern void leveldb_options_set_WAL_ttl_seconds(leveldb_options_t* opt, uint64_t ttl);
+extern void leveldb_options_set_WAL_size_limit_MB(leveldb_options_t*, uint64_t);
+
+// compaction
 extern void leveldb_options_set_compression_options(
     leveldb_options_t* opt, int w_bits, int level, int strategy);
-extern void leveldb_options_set_max_write_buffer_number(leveldb_options_t* opt, size_t s);
-extern void leveldb_options_set_min_write_buffer_number_to_merge(leveldb_options_t* opt, size_t s);
+extern void leveldb_options_disable_auto_compaction(leveldb_options_t* opt, unsigned char v);
+extern void leveldb_options_set_target_file_size_base(
+    leveldb_options_t*, uint64_t);
+extern void leveldb_options_set_target_file_size_multiplier(
+    leveldb_options_t*, int);
+extern void leveldb_options_set_max_bytes_for_level_base(
+    leveldb_options_t*, uint64_t);
+extern void leveldb_options_set_max_bytes_for_level_multiplier(
+    leveldb_options_t*, int);
+extern void leveldb_options_set_expanded_compaction_factor(
+    leveldb_options_t*, int);
+extern void leveldb_options_set_max_grandparent_overlap_factor(
+    leveldb_options_t*, int);
+extern void leveldb_options_set_num_levels(leveldb_options_t* opt, int);
+extern void leveldb_options_set_level0_file_num_compaction_trigger(
+    leveldb_options_t*, int);
+extern void leveldb_options_set_level0_slowdown_writes_trigger(
+    leveldb_options_t*, int);
+extern void leveldb_options_set_level0_stop_writes_trigger(
+    leveldb_options_t*, int);
+extern void leveldb_options_set_max_mem_compaction_level(
+    leveldb_options_t* opt, int);
 
 enum {
   leveldb_no_compression = 0,
@@ -294,6 +336,11 @@ extern void leveldb_readoptions_set_fill_cache(
 extern void leveldb_readoptions_set_snapshot(
     leveldb_readoptions_t*,
     const leveldb_snapshot_t*);
+
+extern void leveldb_readoptions_set_read_prefix(
+    leveldb_readoptions_t*,
+    const char* prefix,
+    size_t prefix_len);
 
 /* Write options */
 

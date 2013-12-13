@@ -44,12 +44,12 @@ void ratgo_leveldb_multi_get(
 
 // According to the answer of :https://groups.google.com/forum/#!msg/golang-nuts/6toTzvJbyIs/sLQF6NLn-wIJ
 // There is no pointer arithmetic in Go.
-// this function gives an index and return the char* from char**
+// this function gives an easy approach to find char* from char**
 char* get_list_at(char **list, int idx){
         return list[idx];
 }
 
-int get_list_int_at(size_t *list, int idx){
+size_t get_list_int_at(size_t *list, int idx){
         return list[idx];
 }
 
@@ -191,7 +191,6 @@ func (db *DB) Get(ro *ReadOptions, key []byte) (*Slice, error) {
 	if value == nil {
 		return nil, nil
 	}
-	defer C.leveldb_free(unsafe.Pointer(value))
 	// not copy the data
 	slice := newSlice(unsafe.Pointer(value), int(vallen), true)
 	return slice, nil
@@ -217,16 +216,13 @@ func (db *DB) MultiGet(ro *ReadOptions, keys [][]byte) (returnValues []*Slice, r
 	returnErrors = make([]error, len(keys))
 
 	for i, key := range keys {
-		// keyArray[i] = (*C.char)(unsafe.Pointer(&key[0]))
-		keyArray[i] = C.CString(string(key))
+		keyArray[i] = (*C.char)(unsafe.Pointer(&key[0]))
+		// keyArray[i] = C.CString(string(key))
 		keyLengthArray[i] = C.size_t(len(key))
 	}
 
 	keyArrayPtr := &keyArray[0]
 	keyLengthArrayPtr := &keyLengthArray[0]
-	/*	valueArrayPtr := &valueArray[0]
-		valueLengthArrayPtr := &valueLengthArray[0]
-		errsStrPtr := &errsStr[0]*/
 
 	C.leveldb_multi_get(
 		db.RocksDb, ro.Opt, C.int(len(keys)),
@@ -240,7 +236,11 @@ func (db *DB) MultiGet(ro *ReadOptions, keys [][]byte) (returnValues []*Slice, r
 		} else {
 			value := C.get_list_at(valueArray, C.int(i))
 			valueLength := C.get_list_int_at(valueLengthArray, C.int(i))
-			returnValues[i] = newSlice(unsafe.Pointer(value), int(valueLength), true)
+			if value == nil {
+				returnValues[i] = nil
+			} else {
+				returnValues[i] = newSlice(unsafe.Pointer(value), int(valueLength), true)
+			}
 		}
 	}
 	C.leveldb_free(unsafe.Pointer(valueLengthArray))
@@ -452,7 +452,7 @@ func (db *DB) GetLiveFiles(flushMemtable bool) (files []string, manifestFileSize
 	for i := 0; i < int(fileNum); i++ {
 		fileLength := C.get_list_int_at(fileLengthArray, C.int(i))
 		file := C.get_list_at(fileArray, C.int(i))
-		files = append(files, C.GoStringN(file, fileLength))
+		files = append(files, C.GoStringN(file, C.int(fileLength)))
 		C.leveldb_free(unsafe.Pointer(file))
 	}
 	manifestFileSize = int(retManifestSize)

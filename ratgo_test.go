@@ -4,11 +4,12 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"runtime"
 
 	"testing"
 )
 
-func ratgoTest(t *testing.T) {
+func TestRago(t *testing.T) {
 	var err error
 	// keys to be inserted
 	k1 := []byte("user1")
@@ -55,7 +56,6 @@ func ratgoTest(t *testing.T) {
 
 	// Get
 	ro := NewReadOptions()
-	defer ro.Close()
 
 	// key doesn't exist
 	data, err := db.Get(ro, k2)
@@ -91,17 +91,17 @@ func ratgoTest(t *testing.T) {
 			t.Errorf("Get key:%s failed, err %v\n", keys[i], errors[i])
 		} else {
 			switch i {
-			case 1:
+			case 0:
 				if value == nil || string(value.Data) != string(v1) {
 					t.Errorf("Get key:%s failed, value is nil or value is not equal to the expected result", string(keys[i]))
 				}
-			case 2:
+			case 1:
 				if value == nil || string(value.Data) != string(v2) {
 					t.Errorf("Get key:%s failed, value is nil or value is not equal to the expected result", string(keys[i]))
 				}
-			case 3:
+			case 2:
 				if value != nil {
-					t.Errorf("not put key:%s, but get the result, the value is %s", string(k3), string(data.Data))
+					t.Errorf("not put key:%s, but get the result, the value is %s", string(k3), string(value.Data))
 				}
 			}
 		}
@@ -126,8 +126,8 @@ func ratgoTest(t *testing.T) {
 	if err := iter.GetError(); err != nil {
 		t.Errorf("iter failed, error %v", err.Error())
 	}
-	if count != 3 {
-		t.Errorf("should iter from k2~k4, expect 3 elements but the result is %d\n", count)
+	if count != 2 {
+		t.Errorf("should iter from k2~k3, expect 2 elements but the result is %d\n", count)
 	}
 	iter.Close()
 
@@ -140,9 +140,11 @@ func ratgoTest(t *testing.T) {
 		t.Errorf("should not get key:%s with snapshot\n", string(k5))
 	}
 	db.ReleaseSnapshot(snap)
+	ro.Close()
 
-	v, err = db.Get(ro, k5)
-	if v == nil {
+	ro = NewReadOptions()
+	getV5, err := db.Get(ro, k5)
+	if getV5 == nil {
 		t.Errorf("should get key:%s with no snapshot\n", string(k5))
 	}
 

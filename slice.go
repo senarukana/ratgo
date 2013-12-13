@@ -25,8 +25,8 @@ type c_slice_t struct {
 	n int
 }
 
-// in iter case we don't need to free the data by our own
-func newSlice(p unsafe.Pointer, n int, recycle bool) *Slice {
+// in iter case we don't need to free the data by own
+func newSlice(p unsafe.Pointer, n int, free bool) *Slice {
 	data := &c_slice_t{p, n}
 	if recycle {
 		runtime.SetFinalizer(data, func(data *c_slice_t) {

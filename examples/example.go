@@ -1,6 +1,6 @@
 package main
 
-import (
+/*import (
 	"fmt"
 	"os"
 	"path"
@@ -124,3 +124,4 @@ func main() {
 	}
 	return
 }
+*/

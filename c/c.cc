@@ -198,6 +198,16 @@ void leveldb_delete(
   SaveError(errptr, db->rep->Delete(options->rep, Slice(key, keylen)));
 }
 
+void leveldb_merge(
+    leveldb_t* db,
+    const leveldb_writeoptions_t* options,
+    const char* key, size_t keylen,
+    const char* val, size_t vallen,
+    char** errptr) {
+  SaveError(errptr,
+            db->rep->Merge(options->rep, Slice(key, keylen), Slice(val, vallen)));
+}
+
 
 void leveldb_write(
     leveldb_t* db,
@@ -576,6 +586,10 @@ void leveldb_options_set_block_restart_interval(leveldb_options_t* opt, int n) {
   opt->rep.block_restart_interval = n;
 }
 
+//
+// Compaction Options
+//
+
 void leveldb_options_set_target_file_size_base(
     leveldb_options_t* opt, uint64_t n) {
   opt->rep.target_file_size_base = n;
@@ -630,6 +644,11 @@ void leveldb_options_set_max_mem_compaction_level(
   opt->rep.max_mem_compaction_level = n;
 }
 
+void leveldb_options_disable_auto_compaction(
+    leveldb_options_t* opt, unsigned char v) {
+  opt->rep.disable_auto_compactions = v;
+}
+
 void leveldb_options_set_compression(leveldb_options_t* opt, int t) {
   opt->rep.compression = static_cast<CompressionType>(t);
 }
@@ -652,14 +671,18 @@ void leveldb_options_set_compression_options(
 }
 
 void leveldb_options_set_disable_data_sync(
-    leveldb_options_t* opt, bool disable_data_sync) {
+    leveldb_options_t* opt, unsigned char disable_data_sync) {
   opt->rep.disableDataSync = disable_data_sync;
 }
 
 void leveldb_options_set_use_fsync(
-    leveldb_options_t* opt, bool use_fsync) {
+    leveldb_options_t* opt, unsigned char use_fsync) {
   opt->rep.use_fsync = use_fsync;
 }
+
+//
+// Log options
+//
 
 void leveldb_options_set_db_stats_log_interval(
     leveldb_options_t* opt, int db_stats_log_interval) {
@@ -773,6 +796,13 @@ void leveldb_readoptions_set_snapshot(
     const leveldb_snapshot_t* snap) {
   opt->rep.snapshot = (snap ? snap->rep : NULL);
 }
+
+/*void leveldb_readoptions_set_read_prefix(
+    leveldb_readoptions_t* opt,
+    const char* prefix,
+    size_t prefix_len) {
+  opt->rep.prefix = &Slice(prefix, prefix_len);
+}*/
 
 leveldb_writeoptions_t* leveldb_writeoptions_create() {
   return new leveldb_writeoptions_t;
