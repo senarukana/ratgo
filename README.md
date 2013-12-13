@@ -1,21 +1,18 @@
 # rago
 ratgo is a Go wrapper for RocksDb
 
-Package ratgo provides the ability to create and access RocksDB databases.
+Package ratgo provides the ability to create and access [RocksDB](https://github.com/facebook/rocksdb) databases.
 
-RocksDB is a database built by facebook and based on the leveldb.
+RocksDB is a database built by facebook and based on the [LevelDB](https://code.google.com/p/leveldb/).
 
-For more information, see:https://github.com/facebook/rocksdb
 
-This wrapper is based on the levigo which is a wrapper for leveldb. Thanks to the author Albert Strasheim.
-
-For more information about levigo, see: https://github.com/jmhodges/levigo
+This wrapper is based on the [levigo](https://github.com/jmhodges/levigo) which is a wrapper for leveldb. Thanks to the author Albert Strasheim.
 
 # Warning
 
-Because RocksDB is still under development, it's interface are not stable and may change during the process.
+Because RocksDB is still under development, it's interface are not stable and may change during the process. So this package may also not **stable**.
 
-This wrapper only contains a PARTIAL range of functions.
+This wrapper only contains a **PARTIAL** range of functions.
 
 If you are advanced user, I really recommend you to see their introduction to get full apis.
 
@@ -58,5 +55,4 @@ You can see the test in **ratgo_test.go** or examples in folder **examples/** to
 
 # Development
 
-I currently use this to build a distributed database RationalDB, for more information, see:
-https://github.com/senarukana/RelationalDB
+I currently use this to build a distributed database [RationalDB](https://github.com/senarukana/RelationalDB)
