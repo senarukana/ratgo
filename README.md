@@ -6,7 +6,7 @@ Package ratgo provides the ability to create and access [RocksDB](https://github
 RocksDB is a database built by facebook and based on the [LevelDB](https://code.google.com/p/leveldb/).
 
 
-This wrapper is based on the [levigo](https://github.com/jmhodges/levigo) which is a wrapper for leveldb. Thanks to the author Albert Strasheim.
+This wrapper is based on the [levigo](https://github.com/jmhodges/levigo) which is a wrapper for LevelDB. Thanks to the author Albert Strasheim.
 
 # Warning
 
@@ -20,10 +20,14 @@ If you are advanced user, I really recommend you to see their introduction to ge
 
 1.You'll need to clone a copy of [RocksDB](https://github.com/facebook/rocksdb).
 
-Clone a copy of ratgo, and do the following cmd to copy the c.h, and c.cc to the destination place.
+    git clone https://github.com/facebook/rocksdb.git
 
-    cp ratgoPATH/c.h RocksDBPATH/include/c.h
-    cp ratgoPATH/c.cc RocksDBPATH/db/c.cc
+2.Clone a copy of ratgo, and do the following cmd to copy the c.h, and c.cc to the destination place.
+
+    git clone https://github.com/senarukana/ratgo.git
+    cd ratgo
+    cp ratgo/c.h rocksdb/include/c.h
+    cp ratgo/c.cc rocksdb/db/c.cc
 
 2.Build the RocksDB and installed the library.
 
