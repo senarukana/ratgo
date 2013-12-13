@@ -8,6 +8,8 @@ RocksDB is a database built by facebook and based on the [LevelDB](https://code.
 
 This wrapper is based on the [levigo](https://github.com/jmhodges/levigo) which is a wrapper for LevelDB. Thanks to the author Albert Strasheim.
 
+If there are any problems, you can contact me all the time: lizhe.ted@gmail.com
+
 # Warning
 
 Because RocksDB is still under development, it's interface are not stable and may change during the process. So this package may also not **stable**.
