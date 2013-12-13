@@ -111,6 +111,27 @@ func (o *Options) SetInfoLog(log *C.leveldb_logger_t) {
 	C.leveldb_options_set_info_log(o.Opt, log)
 }
 
+// SetUseFsync determines whether or not fsync the data to the disk.
+// If true, then every store to stable storage will issue a fsync.
+// If false, then every store to stable storage will issue a fdatasync.
+// This parameter should be set to true while storing data to
+// filesystem like ext3 that can lose files after a reboot.
+// Default: false
+func (o *Options) SetUseFsync(fsync bool) {
+	C.leveldb_options_set_use_fsync(o.Opt, boolToUchar(fsync))
+}
+
+// SetDisableDataSync determince whether or not sync data to disk.
+// If true, then the contents of data files are not synced
+// to stable storage. Their contents remain in the OS buffers till the
+// OS decides to flush them. This option is good for bulk-loading
+// of data. Once the bulk-loading is complete, please issue a
+// sync to the OS to flush all dirty buffesrs to stable storage.
+// Default: false
+func (o *Options) SetDisableDataSync(fsync bool) {
+	C.leveldb_options_set_disable_data_sync(o.Opt, boolToUchar(fsync))
+}
+
 // SetWriteBufferSize sets the number of bytes the database will build up in
 // memory (backed by an unsorted log on disk) before converting to a sorted
 // on-disk file.

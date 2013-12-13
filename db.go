@@ -165,9 +165,10 @@ func (db *DB) Put(wo *WriteOptions, key, value []byte) error {
 
 // Get returns the data associated with the key from the database.
 //
-// If the key does not exist in the database, a nil []byte is returned. If the
+// Returned slice is a wrapper for bytes read from rocksdb.
+// If the key does not exist in the database, a nil Slice is returned. If the
 // key does exist, but the data is zero-length in the database, a zero-length
-// []byte will be returned.
+// []byte is the Data of slice.
 //
 // The key byte slice may be reused safely. Get takes a copy of
 // them before returning.
@@ -198,9 +199,10 @@ func (db *DB) Get(ro *ReadOptions, key []byte) (*Slice, error) {
 
 // MultiGet returns the data associated with multiple keys from the database.
 //
-// If the key does not exist in the database, a nil []byte is returned. If the
+// Returned slice is a wrapper for bytes read from rocksdb.
+// If the key does not exist in the database, a nil Slice is returned. If the
 // key does exist, but the data is zero-length in the database, a zero-length
-// []byte will be returned.
+// []byte is the Data of slice.
 //
 // The key byte slice may be reused safely. Get takes a copy of
 // them before returning.
