@@ -57,7 +57,7 @@ func (it *Iterator) Valid() bool {
 // Key returns a copy the key in the database the iterator currently holds.
 //
 // If Valid returns false, this method will panic.
-func (it *Iterator) Key() *Slice {
+func (it *Iterator) Key() []byte {
 	var klen C.size_t
 	kdata := C.leveldb_iter_key(it.Iter, &klen)
 	if kdata == nil {
@@ -67,14 +67,14 @@ func (it *Iterator) Key() *Slice {
 	// client. It's a direct reference to data managed by the iterator_t
 	// instead of a copy.  So, we must not free it here but simply copy it
 	// with GoBytes.
-	return newSlice(unsafe.Pointer(kdata), int(klen), false)
+	return C.GoBytes(unsafe.Pointer(kdata), C.int(klen))
 }
 
 // Value returns a copy of the value in the database the iterator currently
 // holds.
 //
 // If Valid returns false, this method will panic.
-func (it *Iterator) Value() *Slice {
+func (it *Iterator) Value() []byte {
 	var vlen C.size_t
 	vdata := C.leveldb_iter_value(it.Iter, &vlen)
 	if vdata == nil {
@@ -84,7 +84,7 @@ func (it *Iterator) Value() *Slice {
 	// the client. It's a direct reference to data managed by the iterator_t
 	// instead of a copy. So, we must not free it here but simply copy it with
 	// GoBytes.
-	return newSlice(unsafe.Pointer(vdata), int(vlen), false)
+	return C.GoBytes(unsafe.Pointer(vdata), C.int(vlen))
 }
 
 // Next moves the iterator to the next sequential key in the database, as

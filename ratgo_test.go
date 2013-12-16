@@ -9,7 +9,22 @@ import (
 	"testing"
 )
 
-func TestRago(t *testing.T) {
+func TestMain(t *testing.T) {
+	b := testRago(t)
+
+	// test gc
+	v := "value5"
+	if string(b) != v {
+		t.Errorf("expect return value is %s, but result is %s", v, string(b))
+	}
+	runtime.GC()
+	if string(b) == v {
+		t.Error("value5 shoud be freed after gc, but it's not")
+	}
+
+}
+
+func testRago(t *testing.T) []byte {
 	var err error
 	// keys to be inserted
 	k1 := []byte("user1")
@@ -185,4 +200,5 @@ func TestRago(t *testing.T) {
 	if err != nil {
 		t.Fatal("Destroy database error, %v\n", err)
 	}
+	return getV5.Data
 }

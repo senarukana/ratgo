@@ -172,7 +172,7 @@ func (db *DB) Put(wo *WriteOptions, key, value []byte) error {
 //
 // The key byte slice may be reused safely. Get takes a copy of
 // them before returning.
-func (db *DB) Get(ro *ReadOptions, key []byte) (*Slice, error) {
+func (db *DB) Get(ro *ReadOptions, key []byte) ([]byte, error) {
 	var errStr *C.char
 	var vallen C.size_t
 	var k *C.char
@@ -192,9 +192,9 @@ func (db *DB) Get(ro *ReadOptions, key []byte) (*Slice, error) {
 	if value == nil {
 		return nil, nil
 	}
-	// not copy the data
-	slice := newSlice(unsafe.Pointer(value), int(vallen), true)
-	return slice, nil
+
+	defer C.leveldb_free(unsafe.Pointer(value))
+	return C.GoBytes(unsafe.Pointer(value), C.int(vallen)), nil
 }
 
 // MultiGet returns the data associated with multiple keys from the database.
@@ -206,7 +206,7 @@ func (db *DB) Get(ro *ReadOptions, key []byte) (*Slice, error) {
 //
 // The key byte slice may be reused safely. Get takes a copy of
 // them before returning.
-func (db *DB) MultiGet(ro *ReadOptions, keys [][]byte) (returnValues []*Slice, returnErrors []error) {
+func (db *DB) MultiGet(ro *ReadOptions, keys [][]byte) (returnValues [][]byte, returnErrors []error) {
 	var errsStr **C.char
 	var valueArray **C.char
 	var valueLengthArray *C.size_t
@@ -214,7 +214,7 @@ func (db *DB) MultiGet(ro *ReadOptions, keys [][]byte) (returnValues []*Slice, r
 	keyArray := make([]*C.char, num)
 	keyLengthArray := make([]C.size_t, num)
 
-	returnValues = make([]*Slice, len(keys))
+	returnValues = make([][]byte, len(keys))
 	returnErrors = make([]error, len(keys))
 
 	for i, key := range keys {
@@ -241,8 +241,9 @@ func (db *DB) MultiGet(ro *ReadOptions, keys [][]byte) (returnValues []*Slice, r
 			if value == nil {
 				returnValues[i] = nil
 			} else {
-				returnValues[i] = newSlice(unsafe.Pointer(value), int(valueLength), true)
+				returnValues[i] = C.GoBytes(unsafe.Pointer(value), C.int(valueLength))
 			}
+			C.leveldb_free(unsafe.Pointer(value))
 		}
 	}
 	C.leveldb_free(unsafe.Pointer(valueLengthArray))
