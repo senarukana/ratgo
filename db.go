@@ -63,6 +63,7 @@ import (
 type DatabaseError string
 
 func (e DatabaseError) Error() string {
+	fmt.Println("hello world")
 	return string(e)
 }
 
