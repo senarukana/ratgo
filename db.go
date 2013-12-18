@@ -1,5 +1,5 @@
 package ratgo
-
+//hello world test
 /*
 #cgo LDFLAGS: -lrocksdb -lrt
 #include <stdlib.h>
@@ -63,6 +63,7 @@ import (
 type DatabaseError string
 
 func (e DatabaseError) Error() string {
+	fmt.Println("hello world")
 	return string(e)
 }
 
