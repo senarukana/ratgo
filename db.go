@@ -1,5 +1,5 @@
 package ratgo
-
+//hello world test
 /*
 #cgo LDFLAGS: -lrocksdb -lrt
 #include <stdlib.h>
