@@ -1,6 +1,6 @@
 package main
 
-/*import (
+import (
 	"fmt"
 	"os"
 	"path"
@@ -41,7 +41,7 @@ func main() {
 		fmt.Println("read failed:", err)
 	}
 
-	fmt.Printf("result is %s\n", string(data.Data))
+	fmt.Printf("result is %s\n", string(data))
 
 	// Batch Write
 	wb := ratgo.NewWriteBatch()
@@ -57,7 +57,7 @@ func main() {
 	fmt.Println("Begin iterate")
 	iter.Seek([]byte("user"))
 	for ; iter.Valid(); iter.Next() {
-		fmt.Printf("%s = %s\n", string(iter.Key().Data), string(iter.Value().Data))
+		fmt.Printf("%s = %s\n", string(iter.Key()), string(iter.Value()))
 	}
 	if err := iter.GetError(); err != nil {
 		fmt.Println("iter error, ", err.Error())
@@ -73,7 +73,7 @@ func main() {
 		if errors[i] != nil {
 			fmt.Printf("Get Key %s failed, %v\n", keys[i], errors[i])
 		} else {
-			fmt.Printf("%s = %s\n", keys[i], string(value.Data))
+			fmt.Printf("%s = %s\n", keys[i], string(value))
 		}
 	}
 	fmt.Println("End Multiget")
@@ -124,4 +124,3 @@ func main() {
 	}
 	return
 }
-*/

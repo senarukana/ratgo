@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-func TestMain(t *testing.T) {
+/*func TestMain(t *testing.T) {
 	b := testRago(t)
 
 	// test gc
@@ -22,9 +22,9 @@ func TestMain(t *testing.T) {
 		t.Error("value5 shoud be freed after gc, but it's not")
 	}
 
-}
+}*/
 
-func testRago(t *testing.T) []byte {
+func TestRago(t *testing.T) {
 	var err error
 	// keys to be inserted
 	k1 := []byte("user1")
@@ -78,7 +78,7 @@ func testRago(t *testing.T) []byte {
 		t.Errorf("read key:%s failed, err %v\n", k2, err)
 	}
 	if data != nil {
-		t.Errorf("not put key:%s, but get the result, the value is %s", string(k2), string(data.Data))
+		t.Errorf("not put key:%s, but get the result, the value is %s", string(k2), string(data))
 	}
 
 	err = db.Put(wo, k2, v2)
@@ -93,8 +93,8 @@ func testRago(t *testing.T) []byte {
 	if data == nil {
 		t.Errorf("already put key:%s, but can't find it", string(k2))
 	} else {
-		if string(data.Data) != string(v2) {
-			t.Errorf("key:%s=%s, expect %s\n", string(k2), string(data.Data), string(v2))
+		if string(data) != string(v2) {
+			t.Errorf("key:%s=%s, expect %s\n", string(k2), string(data), string(v2))
 		}
 	}
 
@@ -107,16 +107,16 @@ func testRago(t *testing.T) []byte {
 		} else {
 			switch i {
 			case 0:
-				if value == nil || string(value.Data) != string(v1) {
+				if value == nil || string(value) != string(v1) {
 					t.Errorf("Get key:%s failed, value is nil or value is not equal to the expected result", string(keys[i]))
 				}
 			case 1:
-				if value == nil || string(value.Data) != string(v2) {
+				if value == nil || string(value) != string(v2) {
 					t.Errorf("Get key:%s failed, value is nil or value is not equal to the expected result", string(keys[i]))
 				}
 			case 2:
 				if value != nil {
-					t.Errorf("not put key:%s, but get the result, the value is %s", string(k3), string(value.Data))
+					t.Errorf("not put key:%s, but get the result, the value is %s", string(k3), string(value))
 				}
 			}
 		}
@@ -200,5 +200,4 @@ func testRago(t *testing.T) []byte {
 	if err != nil {
 		t.Fatal("Destroy database error, %v\n", err)
 	}
-	return getV5.Data
 }

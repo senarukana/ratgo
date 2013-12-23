@@ -1,7 +1,7 @@
 package ratgo
 
 /*
-#cgo LDFLAGS: -lrocksdb -lrt
+#cgo LDFLAGS: -lrocksdb -lrt -lstdc++
 #include <stdlib.h>
 #include "rocksdb/c.h"
 
@@ -253,6 +253,7 @@ func (db *DB) MultiGet(ro *ReadOptions, keys [][]byte) (returnValues [][]byte, r
 // Flush flush all the data in memtable to disk
 //
 // If FlushOptions wait is true, the flush will wait until the flush is done.
+// If false, it will return immediately.
 // Default: true
 func (db *DB) Flush(fo *FlushOptions) error {
 	var errStr *C.char
@@ -266,6 +267,7 @@ func (db *DB) Flush(fo *FlushOptions) error {
 }
 
 // Delete removes the data associated with the key from the database.
+// If the key is empty, no error will be returned
 //
 // The key byte slice may be reused safely. Delete takes a copy of
 // them before returning.
