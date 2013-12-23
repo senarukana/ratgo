@@ -2,7 +2,7 @@ package ratgo
 
 // #cgo LDFLAGS: -lrocksdb -lrt
 // #include <stdlib.h>
-// #include "leveldb/c.h"
+// #include "rocksdb/c.h"
 import "C"
 
 // FilterPolicy is a factory type that allows the RocksDB database to create a
