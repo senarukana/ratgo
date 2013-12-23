@@ -1,7 +1,7 @@
 package ratgo
 
 /*
-#cgo LDFLAGS: -lrocksdb -lrt
+#cgo LDFLAGS: -lrocksdb -lrt -lstdc++
 #include <stdlib.h>
 #include "rocksdb/c.h"
 
